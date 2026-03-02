@@ -1,0 +1,16 @@
+{
+  "name": "bluff-cards",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1",
+    "next": "^14",
+    "react": "^18",
+    "react-dom": "^18"
+  }
+}
