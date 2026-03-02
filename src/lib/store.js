@@ -1,7 +1,12 @@
 import { Redis } from '@upstash/redis';
 
 let redis = null;
-const memoryStore = new Map();
+
+// globalThis persists across separately-bundled route handlers in the same Node process
+if (!globalThis.__bluffMemoryStore) {
+  globalThis.__bluffMemoryStore = new Map();
+}
+const memoryStore = globalThis.__bluffMemoryStore;
 
 function getRedis() {
   if (!redis && process.env.KV_REST_API_URL) {
