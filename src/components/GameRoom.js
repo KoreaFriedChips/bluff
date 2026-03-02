@@ -18,6 +18,7 @@ export default function GameRoom({ roomId }) {
   const [error, setError] = useState('');
   const [action, setAction] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [shuffling, setShuffling] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [kicked, setKicked] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -241,18 +242,34 @@ export default function GameRoom({ roomId }) {
       <div className="table-area">
         <div className="table-center">
           <div className="deck-visual">
-            <div className="deck-stack">
+            <div className={`deck-stack ${shuffling ? 'deck-shuffling' : ''}`}>
               <div className="deck-card deck-card-3" />
               <div className="deck-card deck-card-2" />
               <div className="deck-card deck-card-1" />
+              {shuffling && (
+                <>
+                  <div className="deck-card shuffle-fan shuffle-fan-l" />
+                  <div className="deck-card shuffle-fan shuffle-fan-r" />
+                </>
+              )}
             </div>
             <span className="deck-label">{state.deckCount}</span>
           </div>
 
           <div className="table-actions">
-            <button className="btn btn-action btn-shuffle" onClick={() => sendAction('shuffle')}>
-              <span className="btn-icon">↻</span>
-              Shuffle
+            <button
+              className="btn btn-action btn-shuffle"
+              disabled={shuffling}
+              onClick={() => {
+                setShuffling(true);
+                setTimeout(() => {
+                  sendAction('shuffle');
+                  setShuffling(false);
+                }, 900);
+              }}
+            >
+              <span className={`btn-icon ${shuffling ? 'btn-icon-spin' : ''}`}>↻</span>
+              {shuffling ? 'Shuffling...' : 'Shuffle'}
             </button>
             <button className="btn btn-action btn-deal" onClick={() => sendAction('deal')}>
               <span className="btn-icon">⇥</span>
