@@ -568,11 +568,74 @@ body {
   min-width: 200px;
 }
 
+.other-player-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
 .other-player-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.host-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  background: rgba(201, 169, 110, 0.12);
+  border: 1px solid rgba(201, 169, 110, 0.25);
+  padding: 2px 7px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+.host-badge-you {
+  margin-left: 2px;
+}
+
+.btn-kick {
+  background: none;
+  border: 1px solid rgba(192, 57, 43, 0.3);
+  color: rgba(231, 76, 60, 0.6);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-kick:hover {
+  background: rgba(192, 57, 43, 0.2);
+  border-color: rgba(231, 76, 60, 0.6);
+  color: #e74c3c;
+}
+
+.action-toast-kick {
+  background: rgba(192, 57, 43, 0.2);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  color: #f5b7b1;
+}
+
+.kicked-msg {
+  font-size: 18px;
+  color: #e74c3c;
+  font-weight: 500;
 }
 
 .other-player-cards {

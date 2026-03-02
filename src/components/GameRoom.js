@@ -19,6 +19,7 @@ export default function GameRoom({ roomId }) {
   const [action, setAction] = useState(null);
   const [copied, setCopied] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [kicked, setKicked] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [needsName, setNeedsName] = useState(false);
   const [ready, setReady] = useState(false);
@@ -62,6 +63,10 @@ export default function GameRoom({ roomId }) {
           setNotFound(true);
           return;
         }
+        if (res.status === 403) {
+          setKicked(true);
+          return;
+        }
         joined.current = true;
       } catch {
         setError('Failed to join room');
@@ -72,6 +77,11 @@ export default function GameRoom({ roomId }) {
       if (!joined.current) return;
       try {
         const res = await fetch(`/api/rooms/${roomId}?playerId=${playerId}`);
+        if (res.status === 403) {
+          setKicked(true);
+          joined.current = false;
+          return;
+        }
         if (!res.ok) return;
         const data = await res.json();
         setState(data);
@@ -95,12 +105,12 @@ export default function GameRoom({ roomId }) {
     };
   }, [roomId, ready]);
 
-  const sendAction = useCallback(async (actionType) => {
+  const sendAction = useCallback(async (actionType, extra = {}) => {
     try {
       const res = await fetch(`/api/rooms/${roomId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: actionType, playerId: playerIdRef.current }),
+        body: JSON.stringify({ action: actionType, playerId: playerIdRef.current, ...extra }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -160,6 +170,17 @@ export default function GameRoom({ roomId }) {
     );
   }
 
+  if (kicked) {
+    return (
+      <main className="game-loading">
+        <p className="kicked-msg">You were kicked from this room.</p>
+        <a href="/" className="btn btn-primary" style={{ marginTop: 16, textDecoration: 'none' }}>
+          Back to Home
+        </a>
+      </main>
+    );
+  }
+
   if (notFound) {
     return (
       <main className="game-loading">
@@ -204,11 +225,13 @@ export default function GameRoom({ roomId }) {
       </header>
 
       {action && (
-        <div className={`action-toast ${action.type === 'cap' ? 'action-toast-cap' : ''}`}>
+        <div className={`action-toast ${action.type === 'cap' ? 'action-toast-cap' : ''} ${action.type === 'kick' ? 'action-toast-kick' : ''}`}>
           {action.type === 'shuffle'
             ? `${action.by} shuffled the deck`
             : action.type === 'cap'
             ? `${action.by} called Cap — all cards revealed!`
+            : action.type === 'kick'
+            ? `${action.by} kicked ${action.target}`
             : `${action.by} dealt the cards`}
         </div>
       )}
@@ -250,7 +273,21 @@ export default function GameRoom({ roomId }) {
           <div className="others-area">
             {others.map((player) => (
               <div key={player.id} className="other-player">
-                <div className="other-player-name">{player.name}</div>
+                <div className="other-player-header">
+                  <div className="other-player-name">
+                    {player.name}
+                    {player.isHost && <span className="host-badge">Host</span>}
+                  </div>
+                  {state.isHost && (
+                    <button
+                      className="btn-kick"
+                      onClick={() => sendAction('kick', { targetId: player.id })}
+                      title={`Kick ${player.name}`}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
                 <div className={`other-player-cards ${state.revealed ? 'other-player-cards-revealed' : ''}`}>
                   {state.revealed && player.hand
                     ? player.hand.map((card, i) => (
@@ -274,6 +311,7 @@ export default function GameRoom({ roomId }) {
           <div className="your-hand-label">
             <span className="your-hand-name">{you.name}</span>
             <span className="your-hand-badge">Your Hand</span>
+            {state.isHost && <span className="host-badge host-badge-you">Host</span>}
           </div>
           <div className="your-hand-cards">
             {state.myHand.map((card, i) => (

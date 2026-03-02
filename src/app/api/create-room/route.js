@@ -10,6 +10,8 @@ export async function GET() {
     players: {},
     hands: {},
     playerOrder: [],
+    hostId: null,
+    kicked: [],
     dealt: false,
     revealed: false,
     lastAction: null,

@@ -12,6 +12,10 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   }
 
+  if (room.kicked && room.kicked.includes(playerId)) {
+    return NextResponse.json({ error: 'You were kicked from this room' }, { status: 403 });
+  }
+
   const players = [];
   for (const [pid, player] of Object.entries(room.players)) {
     const entry = {
@@ -19,6 +23,7 @@ export async function GET(request, { params }) {
       name: player.name,
       cardCount: room.hands[pid] ? room.hands[pid].length : 0,
       isYou: pid === playerId,
+      isHost: pid === room.hostId,
     };
     if (room.revealed && room.hands[pid]) {
       entry.hand = room.hands[pid];
@@ -32,6 +37,7 @@ export async function GET(request, { params }) {
     myHand: room.hands[playerId] || [],
     dealt: room.dealt,
     revealed: room.revealed,
+    isHost: playerId === room.hostId,
     deckCount: room.deck.length,
     playerCount: Object.keys(room.players).length,
     lastAction: room.lastAction,
@@ -41,15 +47,20 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   const { roomId } = params;
   const body = await request.json();
-  const { action, playerId, playerName } = body;
+  const { action, playerId, playerName, targetId } = body;
 
   const room = await getRoom(roomId);
   if (!room) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   }
 
+  if (!room.kicked) room.kicked = [];
+
   switch (action) {
     case 'join': {
+      if (room.kicked.includes(playerId)) {
+        return NextResponse.json({ error: 'You were kicked from this room' }, { status: 403 });
+      }
       if (Object.keys(room.players).length >= 10 && !room.players[playerId]) {
         return NextResponse.json({ error: 'Room is full (max 10 players)' }, { status: 400 });
       }
@@ -60,6 +71,27 @@ export async function POST(request, { params }) {
           room.hands[playerId] = [];
         }
       }
+      if (!room.hostId) {
+        room.hostId = playerId;
+      }
+      break;
+    }
+    case 'kick': {
+      if (playerId !== room.hostId) {
+        return NextResponse.json({ error: 'Only the host can kick players' }, { status: 403 });
+      }
+      if (!targetId || !room.players[targetId]) {
+        return NextResponse.json({ error: 'Player not found' }, { status: 400 });
+      }
+      if (targetId === room.hostId) {
+        return NextResponse.json({ error: 'Cannot kick yourself' }, { status: 400 });
+      }
+      const kickedName = room.players[targetId].name;
+      delete room.players[targetId];
+      delete room.hands[targetId];
+      room.playerOrder = room.playerOrder.filter((id) => id !== targetId);
+      room.kicked.push(targetId);
+      room.lastAction = { type: 'kick', by: room.players[playerId]?.name, target: kickedName, at: Date.now() };
       break;
     }
     case 'shuffle': {
