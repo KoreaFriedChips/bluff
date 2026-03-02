@@ -19,12 +19,34 @@ export default function GameRoom({ roomId }) {
   const [action, setAction] = useState(null);
   const [copied, setCopied] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [needsName, setNeedsName] = useState(false);
+  const [ready, setReady] = useState(false);
   const actionTimeout = useRef(null);
   const lastActionAt = useRef(null);
   const joined = useRef(false);
   const playerIdRef = useRef('');
 
   useEffect(() => {
+    const stored = localStorage.getItem('playerName');
+    if (stored) {
+      setReady(true);
+    } else {
+      setNeedsName(true);
+    }
+  }, []);
+
+  function handleNameSubmit(e) {
+    e.preventDefault();
+    if (!nameInput.trim()) return;
+    localStorage.setItem('playerName', nameInput.trim());
+    setNeedsName(false);
+    setReady(true);
+  }
+
+  useEffect(() => {
+    if (!ready) return;
+
     const playerId = getPlayerId();
     playerIdRef.current = playerId;
     const playerName = localStorage.getItem('playerName') || 'Anonymous';
@@ -71,7 +93,7 @@ export default function GameRoom({ roomId }) {
       clearInterval(interval);
       clearTimeout(actionTimeout.current);
     };
-  }, [roomId]);
+  }, [roomId, ready]);
 
   const sendAction = useCallback(async (actionType) => {
     try {
@@ -96,6 +118,47 @@ export default function GameRoom({ roomId }) {
       setTimeout(() => setCopied(false), 2000);
     });
   }, [roomId]);
+
+  if (needsName) {
+    return (
+      <main className="landing">
+        <div className="landing-bg" />
+        <div className="landing-content">
+          <div className="logo-area">
+            <div className="suit-icons">
+              <span className="suit-icon hearts">♥</span>
+              <span className="suit-icon spades">♠</span>
+              <span className="suit-icon diamonds">♦</span>
+              <span className="suit-icon clubs">♣</span>
+            </div>
+            <h1 className="logo-title">Bluff</h1>
+            <p className="logo-subtitle">You&apos;ve been invited to a game</p>
+          </div>
+          <form className="landing-card" onSubmit={handleNameSubmit}>
+            <div className="input-group">
+              <label htmlFor="join-name">Enter your name to join</label>
+              <input
+                id="join-name"
+                type="text"
+                placeholder="Your name"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                maxLength={20}
+                autoFocus
+              />
+            </div>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!nameInput.trim()}
+            >
+              Join Game
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
 
   if (notFound) {
     return (
