@@ -668,6 +668,17 @@ body {
   margin-left: 2px;
 }
 
+.deal-count-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #2ecc71;
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid rgba(46, 204, 113, 0.2);
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
 .host-controls {
   display: flex;
   gap: 4px;

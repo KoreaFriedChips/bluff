@@ -23,13 +23,15 @@ export function shuffle(deck) {
 }
 
 export function deal(deck, playerCount, cardsPerPlayer = 5) {
-  if (playerCount * cardsPerPlayer > deck.length) {
+  const counts = Array.isArray(cardsPerPlayer) ? cardsPerPlayer : Array(playerCount).fill(cardsPerPlayer);
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total > deck.length) {
     return null;
   }
   const hands = {};
   const remaining = [...deck];
   for (let p = 0; p < playerCount; p++) {
-    hands[p] = remaining.splice(0, cardsPerPlayer);
+    hands[p] = remaining.splice(0, counts[p]);
   }
   return { hands, remaining };
 }

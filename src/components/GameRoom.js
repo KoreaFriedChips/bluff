@@ -235,7 +235,7 @@ export default function GameRoom({ roomId }) {
             : action.type === 'kick'
             ? `${action.by} kicked ${action.target}`
             : action.type === 'add-card'
-            ? `${action.by} gave ${action.target} a card`
+            ? `${action.target} now gets ${action.count} cards per deal`
             : `${action.by} dealt the cards`}
         </div>
       )}
@@ -297,18 +297,19 @@ export default function GameRoom({ roomId }) {
                   <div className="other-player-name">
                     {player.name}
                     {player.isHost && <span className="host-badge">Host</span>}
+                    {state.isHost && player.dealCount !== 5 && (
+                      <span className="deal-count-badge">{player.dealCount} cards</span>
+                    )}
                   </div>
                   {state.isHost && (
                     <div className="host-controls">
-                      {state.dealt && state.deckCount > 0 && (
-                        <button
-                          className="btn-add-card"
-                          onClick={() => sendAction('add-card', { targetId: player.id })}
-                          title={`Give ${player.name} a card`}
-                        >
-                          +
-                        </button>
-                      )}
+                      <button
+                        className="btn-add-card"
+                        onClick={() => sendAction('add-card', { targetId: player.id })}
+                        title={`Increase ${player.name}'s deal count`}
+                      >
+                        +
+                      </button>
                       <button
                         className="btn-kick"
                         onClick={() => sendAction('kick', { targetId: player.id })}
@@ -343,11 +344,14 @@ export default function GameRoom({ roomId }) {
             <span className="your-hand-name">{you.name}</span>
             <span className="your-hand-badge">Your Hand</span>
             {state.isHost && <span className="host-badge host-badge-you">Host</span>}
-            {state.isHost && state.dealt && state.deckCount > 0 && (
+            {state.isHost && you.dealCount !== 5 && (
+              <span className="deal-count-badge">{you.dealCount} cards</span>
+            )}
+            {state.isHost && (
               <button
                 className="btn-add-card btn-add-card-you"
                 onClick={() => sendAction('add-card', { targetId: you.id })}
-                title="Draw a card for yourself"
+                title="Increase your deal count"
               >
                 + Card
               </button>
@@ -411,7 +415,7 @@ export default function GameRoom({ roomId }) {
                         )}
                       </>
                     )}
-                    {entry.type === 'add-card' && <><strong>{entry.by}</strong> gave <strong>{entry.target}</strong> a card</>}
+                    {entry.type === 'add-card' && <><strong>{entry.target}</strong> now gets <strong>{entry.count}</strong> cards per deal</>}
                     {entry.type === 'kick' && <><strong>{entry.by}</strong> kicked <strong>{entry.target}</strong></>}
                   </div>
                 </div>

@@ -22,6 +22,7 @@ export async function GET(request, { params }) {
       id: pid,
       name: player.name,
       cardCount: room.hands[pid] ? room.hands[pid].length : 0,
+      dealCount: player.dealCount || 5,
       isYou: pid === playerId,
       isHost: pid === room.hostId,
     };
@@ -121,11 +122,13 @@ export async function POST(request, { params }) {
       const playerIds = Object.keys(room.players);
       const count = playerIds.length;
       if (count === 0) break;
-      if (count * 5 > 54) {
-        return NextResponse.json({ error: 'Too many players to deal 5 cards each' }, { status: 400 });
+      const perPlayer = playerIds.map((pid) => room.players[pid].dealCount || 5);
+      const totalNeeded = perPlayer.reduce((a, b) => a + b, 0);
+      if (totalNeeded > 54) {
+        return NextResponse.json({ error: `Need ${totalNeeded} cards but deck only has 54` }, { status: 400 });
       }
       room.deck = shuffle(createDeck());
-      const result = deal(room.deck, count, 5);
+      const result = deal(room.deck, count, perPlayer);
       if (!result) {
         return NextResponse.json({ error: 'Not enough cards' }, { status: 400 });
       }
@@ -144,21 +147,20 @@ export async function POST(request, { params }) {
       if (playerId !== room.hostId) {
         return NextResponse.json({ error: 'Only the host can add cards' }, { status: 403 });
       }
-      if (!room.dealt) {
-        return NextResponse.json({ error: 'Cards have not been dealt yet' }, { status: 400 });
-      }
       if (!targetId || !room.players[targetId]) {
         return NextResponse.json({ error: 'Player not found' }, { status: 400 });
       }
-      if (room.deck.length === 0) {
-        return NextResponse.json({ error: 'No cards left in the deck' }, { status: 400 });
+      const current = room.players[targetId].dealCount || 5;
+      const otherTotal = Object.entries(room.players)
+        .filter(([pid]) => pid !== targetId)
+        .reduce((sum, [, p]) => sum + (p.dealCount || 5), 0);
+      if (current + 1 + otherTotal > 54) {
+        return NextResponse.json({ error: 'Not enough cards in the deck' }, { status: 400 });
       }
-      const card = room.deck.shift();
-      if (!room.hands[targetId]) room.hands[targetId] = [];
-      room.hands[targetId].push(card);
+      room.players[targetId].dealCount = current + 1;
       const targetName = room.players[targetId].name;
-      room.lastAction = { type: 'add-card', by: byName(), target: targetName, at: now };
-      room.history.push({ type: 'add-card', by: byName(), target: targetName, at: now });
+      room.lastAction = { type: 'add-card', by: byName(), target: targetName, count: current + 1, at: now };
+      room.history.push({ type: 'add-card', by: byName(), target: targetName, count: current + 1, at: now });
       break;
     }
     case 'reveal': {
