@@ -95,6 +95,9 @@ export async function POST(request, { params }) {
       break;
     }
     case 'shuffle': {
+      if (playerId !== room.hostId) {
+        return NextResponse.json({ error: 'Only the host can shuffle' }, { status: 403 });
+      }
       room.deck = shuffle(createDeck());
       room.hands = {};
       room.dealt = false;
@@ -103,6 +106,9 @@ export async function POST(request, { params }) {
       break;
     }
     case 'deal': {
+      if (playerId !== room.hostId) {
+        return NextResponse.json({ error: 'Only the host can deal' }, { status: 403 });
+      }
       const playerIds = Object.keys(room.players);
       const count = playerIds.length;
       if (count === 0) break;

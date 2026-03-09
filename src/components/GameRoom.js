@@ -259,7 +259,7 @@ export default function GameRoom({ roomId }) {
           <div className="table-actions">
             <button
               className="btn btn-action btn-shuffle"
-              disabled={shuffling}
+              disabled={shuffling || !state.isHost}
               onClick={() => {
                 setShuffling(true);
                 setTimeout(() => {
@@ -271,7 +271,7 @@ export default function GameRoom({ roomId }) {
               <span className={`btn-icon ${shuffling ? 'btn-icon-spin' : ''}`}>↻</span>
               {shuffling ? 'Shuffling...' : 'Shuffle'}
             </button>
-            <button className="btn btn-action btn-deal" onClick={() => sendAction('deal')}>
+            <button className="btn btn-action btn-deal" onClick={() => sendAction('deal')} disabled={!state.isHost}>
               <span className="btn-icon">⇥</span>
               Deal
             </button>
