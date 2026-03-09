@@ -15,6 +15,7 @@ export async function GET() {
     dealt: false,
     revealed: false,
     lastAction: null,
+    history: [],
   };
   await setRoom(roomId, room);
   return NextResponse.json({ roomId });

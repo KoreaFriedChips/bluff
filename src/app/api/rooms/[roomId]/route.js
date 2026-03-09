@@ -41,6 +41,7 @@ export async function GET(request, { params }) {
     deckCount: room.deck.length,
     playerCount: Object.keys(room.players).length,
     lastAction: room.lastAction,
+    history: room.history || [],
   });
 }
 
@@ -55,6 +56,10 @@ export async function POST(request, { params }) {
   }
 
   if (!room.kicked) room.kicked = [];
+  if (!room.history) room.history = [];
+
+  const now = Date.now();
+  const byName = () => room.players[playerId]?.name || 'Unknown';
 
   switch (action) {
     case 'join': {
@@ -65,11 +70,13 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'Room is full (max 10 players)' }, { status: 400 });
       }
       if (!room.players[playerId]) {
-        room.players[playerId] = { name: playerName || `Player ${Object.keys(room.players).length + 1}` };
+        const name = playerName || `Player ${Object.keys(room.players).length + 1}`;
+        room.players[playerId] = { name };
         room.playerOrder.push(playerId);
         if (room.dealt) {
           room.hands[playerId] = [];
         }
+        room.history.push({ type: 'join', by: name, at: now });
       }
       if (!room.hostId) {
         room.hostId = playerId;
@@ -91,7 +98,8 @@ export async function POST(request, { params }) {
       delete room.hands[targetId];
       room.playerOrder = room.playerOrder.filter((id) => id !== targetId);
       room.kicked.push(targetId);
-      room.lastAction = { type: 'kick', by: room.players[playerId]?.name, target: kickedName, at: Date.now() };
+      room.lastAction = { type: 'kick', by: byName(), target: kickedName, at: now };
+      room.history.push({ type: 'kick', by: byName(), target: kickedName, at: now });
       break;
     }
     case 'shuffle': {
@@ -102,7 +110,8 @@ export async function POST(request, { params }) {
       room.hands = {};
       room.dealt = false;
       room.revealed = false;
-      room.lastAction = { type: 'shuffle', by: room.players[playerId]?.name, at: Date.now() };
+      room.lastAction = { type: 'shuffle', by: byName(), at: now };
+      room.history.push({ type: 'shuffle', by: byName(), at: now });
       break;
     }
     case 'deal': {
@@ -127,13 +136,42 @@ export async function POST(request, { params }) {
       room.deck = result.remaining;
       room.dealt = true;
       room.revealed = false;
-      room.lastAction = { type: 'deal', by: room.players[playerId]?.name, at: Date.now() };
+      room.lastAction = { type: 'deal', by: byName(), at: now };
+      room.history.push({ type: 'deal', by: byName(), at: now });
+      break;
+    }
+    case 'add-card': {
+      if (playerId !== room.hostId) {
+        return NextResponse.json({ error: 'Only the host can add cards' }, { status: 403 });
+      }
+      if (!room.dealt) {
+        return NextResponse.json({ error: 'Cards have not been dealt yet' }, { status: 400 });
+      }
+      if (!targetId || !room.players[targetId]) {
+        return NextResponse.json({ error: 'Player not found' }, { status: 400 });
+      }
+      if (room.deck.length === 0) {
+        return NextResponse.json({ error: 'No cards left in the deck' }, { status: 400 });
+      }
+      const card = room.deck.shift();
+      if (!room.hands[targetId]) room.hands[targetId] = [];
+      room.hands[targetId].push(card);
+      const targetName = room.players[targetId].name;
+      room.lastAction = { type: 'add-card', by: byName(), target: targetName, at: now };
+      room.history.push({ type: 'add-card', by: byName(), target: targetName, at: now });
       break;
     }
     case 'reveal': {
       if (!room.dealt) break;
       room.revealed = true;
-      room.lastAction = { type: 'cap', by: room.players[playerId]?.name, at: Date.now() };
+      const revealedHands = {};
+      for (const [pid, player] of Object.entries(room.players)) {
+        if (room.hands[pid] && room.hands[pid].length > 0) {
+          revealedHands[player.name] = room.hands[pid];
+        }
+      }
+      room.lastAction = { type: 'cap', by: byName(), at: now };
+      room.history.push({ type: 'cap', by: byName(), hands: revealedHands, at: now });
       break;
     }
     default:

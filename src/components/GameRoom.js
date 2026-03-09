@@ -24,6 +24,7 @@ export default function GameRoom({ roomId }) {
   const [nameInput, setNameInput] = useState('');
   const [needsName, setNeedsName] = useState(false);
   const [ready, setReady] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
   const actionTimeout = useRef(null);
   const lastActionAt = useRef(null);
   const joined = useRef(false);
@@ -233,6 +234,8 @@ export default function GameRoom({ roomId }) {
             ? `${action.by} called Cap — all cards revealed!`
             : action.type === 'kick'
             ? `${action.by} kicked ${action.target}`
+            : action.type === 'add-card'
+            ? `${action.by} gave ${action.target} a card`
             : `${action.by} dealt the cards`}
         </div>
       )}
@@ -296,13 +299,24 @@ export default function GameRoom({ roomId }) {
                     {player.isHost && <span className="host-badge">Host</span>}
                   </div>
                   {state.isHost && (
-                    <button
-                      className="btn-kick"
-                      onClick={() => sendAction('kick', { targetId: player.id })}
-                      title={`Kick ${player.name}`}
-                    >
-                      ✕
-                    </button>
+                    <div className="host-controls">
+                      {state.dealt && state.deckCount > 0 && (
+                        <button
+                          className="btn-add-card"
+                          onClick={() => sendAction('add-card', { targetId: player.id })}
+                          title={`Give ${player.name} a card`}
+                        >
+                          +
+                        </button>
+                      )}
+                      <button
+                        className="btn-kick"
+                        onClick={() => sendAction('kick', { targetId: player.id })}
+                        title={`Kick ${player.name}`}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className={`other-player-cards ${state.revealed ? 'other-player-cards-revealed' : ''}`}>
@@ -329,6 +343,15 @@ export default function GameRoom({ roomId }) {
             <span className="your-hand-name">{you.name}</span>
             <span className="your-hand-badge">Your Hand</span>
             {state.isHost && <span className="host-badge host-badge-you">Host</span>}
+            {state.isHost && state.dealt && state.deckCount > 0 && (
+              <button
+                className="btn-add-card btn-add-card-you"
+                onClick={() => sendAction('add-card', { targetId: you.id })}
+                title="Draw a card for yourself"
+              >
+                + Card
+              </button>
+            )}
           </div>
           <div className="your-hand-cards">
             {state.myHand.map((card, i) => (
@@ -340,6 +363,61 @@ export default function GameRoom({ roomId }) {
               </div>
             )}
           </div>
+        </div>
+      )}
+      {state.history && state.history.length > 0 && (
+        <div className={`history-panel ${logOpen ? 'history-panel-open' : ''}`}>
+          <button className="history-toggle" onClick={() => setLogOpen((o) => !o)}>
+            <span className="history-toggle-icon">{logOpen ? '▾' : '▸'}</span>
+            Game Log
+            <span className="history-count">{state.history.length}</span>
+          </button>
+          {logOpen && (
+            <div className="history-list">
+              {[...state.history].reverse().map((entry, i) => (
+                <div key={i} className={`history-entry ${entry.type === 'cap' && entry.hands ? 'history-entry-cap' : ''}`}>
+                  <span className="history-time">
+                    {new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                  <span className={`history-icon history-icon-${entry.type}`}>
+                    {entry.type === 'join' ? '→' : entry.type === 'shuffle' ? '↻' : entry.type === 'deal' ? '⇥' : entry.type === 'cap' ? '👁' : entry.type === 'kick' ? '✕' : entry.type === 'add-card' ? '+' : '•'}
+                  </span>
+                  <div className="history-text">
+                    {entry.type === 'join' && <><strong>{entry.by}</strong> joined the room</>}
+                    {entry.type === 'shuffle' && <><strong>{entry.by}</strong> shuffled the deck</>}
+                    {entry.type === 'deal' && <><strong>{entry.by}</strong> dealt cards</>}
+                    {entry.type === 'cap' && (
+                      <>
+                        <div><strong>{entry.by}</strong> called Cap</div>
+                        {entry.hands && (
+                          <div className="history-hands">
+                            {Object.entries(entry.hands).map(([name, cards]) => (
+                              <div key={name} className="history-hand-row">
+                                <span className="history-hand-name">{name}</span>
+                                <span className="history-hand-cards">
+                                  {cards.map((c) => {
+                                    const sym = c.suit === 'hearts' ? '♥' : c.suit === 'diamonds' ? '♦' : c.suit === 'clubs' ? '♣' : c.suit === 'spades' ? '♠' : '★';
+                                    const color = c.suit === 'hearts' || c.suit === 'diamonds' ? 'red' : c.suit === 'joker' ? 'gold' : 'dark';
+                                    return (
+                                      <span key={c.id} className={`history-card history-card-${color}`}>
+                                        {c.value}{sym}
+                                      </span>
+                                    );
+                                  })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {entry.type === 'add-card' && <><strong>{entry.by}</strong> gave <strong>{entry.target}</strong> a card</>}
+                    {entry.type === 'kick' && <><strong>{entry.by}</strong> kicked <strong>{entry.target}</strong></>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </main>
