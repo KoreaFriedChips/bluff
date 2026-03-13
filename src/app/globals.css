@@ -750,6 +750,60 @@ body {
   color: #f5b7b1;
 }
 
+.spectate-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #3498db;
+  background: rgba(52, 152, 219, 0.12);
+  border: 1px solid rgba(52, 152, 219, 0.25);
+  padding: 2px 7px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+.spectate-badge-you {
+  margin-left: 2px;
+}
+
+.btn-spectate {
+  background: none;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  color: rgba(52, 152, 219, 0.6);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-spectate:hover {
+  background: rgba(52, 152, 219, 0.15);
+  border-color: rgba(52, 152, 219, 0.6);
+  color: #3498db;
+}
+
+.btn-spectate-active {
+  background: rgba(52, 152, 219, 0.2);
+  border-color: rgba(52, 152, 219, 0.5);
+  color: #3498db;
+}
+
+.action-toast-spectate {
+  background: rgba(52, 152, 219, 0.2);
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  color: #85c1e9;
+}
+
+.history-icon-spectate { color: #3498db; }
+
 .kicked-msg {
   font-size: 18px;
   color: #e74c3c;

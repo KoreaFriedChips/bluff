@@ -227,7 +227,7 @@ export default function GameRoom({ roomId }) {
       </header>
 
       {action && (
-        <div className={`action-toast ${action.type === 'cap' ? 'action-toast-cap' : ''} ${action.type === 'kick' ? 'action-toast-kick' : ''}`}>
+        <div className={`action-toast ${action.type === 'cap' ? 'action-toast-cap' : ''} ${action.type === 'kick' ? 'action-toast-kick' : ''} ${action.type === 'spectate' ? 'action-toast-spectate' : ''}`}>
           {action.type === 'shuffle'
             ? `${action.by} shuffled the deck`
             : action.type === 'cap'
@@ -236,6 +236,8 @@ export default function GameRoom({ roomId }) {
             ? `${action.by} kicked ${action.target}`
             : action.type === 'add-card'
             ? `${action.target} now gets ${action.count} cards per deal`
+            : action.type === 'spectate'
+            ? `${action.target} is now ${action.mode}`
             : `${action.by} dealt the cards`}
         </div>
       )}
@@ -281,7 +283,7 @@ export default function GameRoom({ roomId }) {
             <button
               className="btn btn-action btn-cap"
               onClick={() => sendAction('reveal')}
-              disabled={!state.dealt || state.revealed}
+              disabled={!state.dealt || state.revealed || state.isSpectating}
             >
               <span className="btn-icon">👁</span>
               Cap
@@ -297,19 +299,29 @@ export default function GameRoom({ roomId }) {
                   <div className="other-player-name">
                     {player.name}
                     {player.isHost && <span className="host-badge">Host</span>}
-                    {state.isHost && player.dealCount !== 5 && (
+                    {player.spectating && <span className="spectate-badge">Spectating</span>}
+                    {state.isHost && !player.spectating && player.dealCount !== 5 && (
                       <span className="deal-count-badge">{player.dealCount} cards</span>
                     )}
                   </div>
                   {state.isHost && (
                     <div className="host-controls">
                       <button
-                        className="btn-add-card"
-                        onClick={() => sendAction('add-card', { targetId: player.id })}
-                        title={`Increase ${player.name}'s deal count`}
+                        className={`btn-spectate ${player.spectating ? 'btn-spectate-active' : ''}`}
+                        onClick={() => sendAction('toggle-spectate', { targetId: player.id })}
+                        title={player.spectating ? `Move ${player.name} back to playing` : `Move ${player.name} to spectate`}
                       >
-                        +
+                        👁
                       </button>
+                      {!player.spectating && (
+                        <button
+                          className="btn-add-card"
+                          onClick={() => sendAction('add-card', { targetId: player.id })}
+                          title={`Increase ${player.name}'s deal count`}
+                        >
+                          +
+                        </button>
+                      )}
                       <button
                         className="btn-kick"
                         onClick={() => sendAction('kick', { targetId: player.id })}
@@ -320,16 +332,22 @@ export default function GameRoom({ roomId }) {
                     </div>
                   )}
                 </div>
-                <div className={`other-player-cards ${state.revealed ? 'other-player-cards-revealed' : ''}`}>
-                  {state.revealed && player.hand
-                    ? player.hand.map((card, i) => (
-                        <Card key={card.id} card={card} index={i} />
-                      ))
-                    : Array.from({ length: player.cardCount }).map((_, i) => (
+                <div className={`other-player-cards ${(state.revealed || state.isSpectating) && player.hand ? 'other-player-cards-revealed' : ''}`}>
+                  {player.spectating ? (
+                    <span className="no-cards">Spectating</span>
+                  ) : (state.revealed || state.isSpectating) && player.hand ? (
+                    player.hand.map((card, i) => (
+                      <Card key={card.id} card={card} index={i} />
+                    ))
+                  ) : (
+                    <>
+                      {Array.from({ length: player.cardCount }).map((_, i) => (
                         <Card key={i} card={{}} index={i} faceDown={true} />
                       ))}
-                  {player.cardCount === 0 && (
-                    <span className="no-cards">No cards</span>
+                      {player.cardCount === 0 && (
+                        <span className="no-cards">No cards</span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -342,12 +360,15 @@ export default function GameRoom({ roomId }) {
         <div className="your-hand-area">
           <div className="your-hand-label">
             <span className="your-hand-name">{you.name}</span>
-            <span className="your-hand-badge">Your Hand</span>
+            {state.isSpectating
+              ? <span className="spectate-badge spectate-badge-you">Spectating</span>
+              : <span className="your-hand-badge">Your Hand</span>
+            }
             {state.isHost && <span className="host-badge host-badge-you">Host</span>}
-            {state.isHost && you.dealCount !== 5 && (
+            {state.isHost && !state.isSpectating && you.dealCount !== 5 && (
               <span className="deal-count-badge">{you.dealCount} cards</span>
             )}
-            {state.isHost && (
+            {state.isHost && !state.isSpectating && (
               <button
                 className="btn-add-card btn-add-card-you"
                 onClick={() => sendAction('add-card', { targetId: you.id })}
@@ -358,13 +379,21 @@ export default function GameRoom({ roomId }) {
             )}
           </div>
           <div className="your-hand-cards">
-            {state.myHand.map((card, i) => (
-              <Card key={card.id} card={card} index={i} />
-            ))}
-            {state.myHand.length === 0 && (
+            {state.isSpectating ? (
               <div className="no-cards-msg">
-                <p>No cards yet — press <strong>Deal</strong> to start</p>
+                <p>You are spectating — you can see all players' cards</p>
               </div>
+            ) : (
+              <>
+                {state.myHand.map((card, i) => (
+                  <Card key={card.id} card={card} index={i} />
+                ))}
+                {state.myHand.length === 0 && (
+                  <div className="no-cards-msg">
+                    <p>No cards yet — press <strong>Deal</strong> to start</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -384,7 +413,7 @@ export default function GameRoom({ roomId }) {
                     {new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                   <span className={`history-icon history-icon-${entry.type}`}>
-                    {entry.type === 'join' ? '→' : entry.type === 'shuffle' ? '↻' : entry.type === 'deal' ? '⇥' : entry.type === 'cap' ? '👁' : entry.type === 'kick' ? '✕' : entry.type === 'add-card' ? '+' : '•'}
+                    {entry.type === 'join' ? '→' : entry.type === 'shuffle' ? '↻' : entry.type === 'deal' ? '⇥' : entry.type === 'cap' ? '👁' : entry.type === 'kick' ? '✕' : entry.type === 'add-card' ? '+' : entry.type === 'spectate' ? '👁' : '•'}
                   </span>
                   <div className="history-text">
                     {entry.type === 'join' && <><strong>{entry.by}</strong> joined the room</>}
@@ -417,6 +446,7 @@ export default function GameRoom({ roomId }) {
                     )}
                     {entry.type === 'add-card' && <><strong>{entry.target}</strong> now gets <strong>{entry.count}</strong> cards per deal</>}
                     {entry.type === 'kick' && <><strong>{entry.by}</strong> kicked <strong>{entry.target}</strong></>}
+                    {entry.type === 'spectate' && <><strong>{entry.target}</strong> is now <strong>{entry.mode}</strong></>}
                   </div>
                 </div>
               ))}

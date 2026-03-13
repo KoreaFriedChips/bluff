@@ -18,19 +18,24 @@ export async function GET(request, { params }) {
 
   const players = [];
   for (const [pid, player] of Object.entries(room.players)) {
+    const isSpectator = player.spectating || false;
+    const requestingPlayerIsSpectator = room.players[playerId]?.spectating || false;
     const entry = {
       id: pid,
       name: player.name,
       cardCount: room.hands[pid] ? room.hands[pid].length : 0,
       dealCount: player.dealCount || 5,
+      spectating: isSpectator,
       isYou: pid === playerId,
       isHost: pid === room.hostId,
     };
-    if (room.revealed && room.hands[pid]) {
+    if ((room.revealed || requestingPlayerIsSpectator) && room.hands[pid]) {
       entry.hand = room.hands[pid];
     }
     players.push(entry);
   }
+
+  const meSpectating = room.players[playerId]?.spectating || false;
 
   return NextResponse.json({
     roomId: room.id,
@@ -39,6 +44,7 @@ export async function GET(request, { params }) {
     dealt: room.dealt,
     revealed: room.revealed,
     isHost: playerId === room.hostId,
+    isSpectating: meSpectating,
     deckCount: room.deck.length,
     playerCount: Object.keys(room.players).length,
     lastAction: room.lastAction,
@@ -119,21 +125,21 @@ export async function POST(request, { params }) {
       if (playerId !== room.hostId) {
         return NextResponse.json({ error: 'Only the host can deal' }, { status: 403 });
       }
-      const playerIds = Object.keys(room.players);
-      const count = playerIds.length;
-      if (count === 0) break;
-      const perPlayer = playerIds.map((pid) => room.players[pid].dealCount || 5);
+      const allIds = Object.keys(room.players);
+      const activeIds = allIds.filter((pid) => !room.players[pid].spectating);
+      if (activeIds.length === 0) break;
+      const perPlayer = activeIds.map((pid) => room.players[pid].dealCount || 5);
       const totalNeeded = perPlayer.reduce((a, b) => a + b, 0);
       if (totalNeeded > 54) {
         return NextResponse.json({ error: `Need ${totalNeeded} cards but deck only has 54` }, { status: 400 });
       }
       room.deck = shuffle(createDeck());
-      const result = deal(room.deck, count, perPlayer);
+      const result = deal(room.deck, activeIds.length, perPlayer);
       if (!result) {
         return NextResponse.json({ error: 'Not enough cards' }, { status: 400 });
       }
       room.hands = {};
-      playerIds.forEach((pid, idx) => {
+      activeIds.forEach((pid, idx) => {
         room.hands[pid] = result.hands[idx];
       });
       room.deck = result.remaining;
@@ -161,6 +167,24 @@ export async function POST(request, { params }) {
       const targetName = room.players[targetId].name;
       room.lastAction = { type: 'add-card', by: byName(), target: targetName, count: current + 1, at: now };
       room.history.push({ type: 'add-card', by: byName(), target: targetName, count: current + 1, at: now });
+      break;
+    }
+    case 'toggle-spectate': {
+      if (playerId !== room.hostId) {
+        return NextResponse.json({ error: 'Only the host can toggle spectate' }, { status: 403 });
+      }
+      if (!targetId || !room.players[targetId]) {
+        return NextResponse.json({ error: 'Player not found' }, { status: 400 });
+      }
+      const wasSpectating = room.players[targetId].spectating || false;
+      room.players[targetId].spectating = !wasSpectating;
+      if (room.players[targetId].spectating) {
+        delete room.hands[targetId];
+      }
+      const specName = room.players[targetId].name;
+      const specMode = room.players[targetId].spectating ? 'spectating' : 'playing';
+      room.lastAction = { type: 'spectate', by: byName(), target: specName, mode: specMode, at: now };
+      room.history.push({ type: 'spectate', by: byName(), target: specName, mode: specMode, at: now });
       break;
     }
     case 'reveal': {
