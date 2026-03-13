@@ -803,6 +803,83 @@ body {
 }
 
 .history-icon-spectate { color: #3498db; }
+.history-icon-setting { color: #f39c12; }
+.history-icon-community-joker { color: #c9a96e; }
+
+.btn-setting {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(201, 169, 110, 0.25);
+  background: rgba(201, 169, 110, 0.08);
+  color: rgba(201, 169, 110, 0.6);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-setting:hover {
+  background: rgba(201, 169, 110, 0.15);
+  border-color: rgba(201, 169, 110, 0.4);
+  color: var(--gold);
+}
+
+.btn-setting-active {
+  background: rgba(201, 169, 110, 0.2);
+  border-color: rgba(201, 169, 110, 0.5);
+  color: var(--gold);
+}
+
+.setting-indicator {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
+  background: rgba(201, 169, 110, 0.12);
+  border: 1px solid rgba(201, 169, 110, 0.2);
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.action-toast-setting {
+  background: rgba(243, 156, 18, 0.15);
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  color: #f9e79f;
+}
+
+.community-joker-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.community-joker-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--gold);
+  opacity: 0.7;
+}
+
+.community-joker-card {
+  animation: communityJokerReveal 0.5s ease-out;
+}
+
+.community-joker-card .card {
+  box-shadow: 0 0 20px rgba(201, 169, 110, 0.4), 0 0 40px rgba(201, 169, 110, 0.15);
+  border: 2px solid rgba(201, 169, 110, 0.5);
+}
+
+@keyframes communityJokerReveal {
+  from { opacity: 0; transform: scale(0.5) rotateY(90deg); }
+  to { opacity: 1; transform: scale(1) rotateY(0); }
+}
 
 .kicked-msg {
   font-size: 18px;

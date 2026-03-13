@@ -221,13 +221,25 @@ export default function GameRoom({ roomId }) {
           </div>
         </div>
         <div className="game-header-right">
+          {state.isHost && (
+            <button
+              className={`btn-setting ${state.communityJokerEnabled ? 'btn-setting-active' : ''}`}
+              onClick={() => sendAction('toggle-community-joker')}
+              title={state.communityJokerEnabled ? 'Disable Community Joker' : 'Enable Community Joker'}
+            >
+              🃏 Community Joker {state.communityJokerEnabled ? 'ON' : 'OFF'}
+            </button>
+          )}
+          {!state.isHost && state.communityJokerEnabled && (
+            <span className="setting-indicator">🃏 Community Joker</span>
+          )}
           <span className="player-count">{state.playerCount} player{state.playerCount !== 1 ? 's' : ''}</span>
           <span className="deck-count">{state.deckCount} cards left</span>
         </div>
       </header>
 
       {action && (
-        <div className={`action-toast ${action.type === 'cap' ? 'action-toast-cap' : ''} ${action.type === 'kick' ? 'action-toast-kick' : ''} ${action.type === 'spectate' ? 'action-toast-spectate' : ''}`}>
+        <div className={`action-toast ${action.type === 'cap' ? 'action-toast-cap' : ''} ${action.type === 'kick' ? 'action-toast-kick' : ''} ${action.type === 'spectate' ? 'action-toast-spectate' : ''} ${action.type === 'setting' ? 'action-toast-setting' : ''}`}>
           {action.type === 'shuffle'
             ? `${action.by} shuffled the deck`
             : action.type === 'cap'
@@ -238,6 +250,8 @@ export default function GameRoom({ roomId }) {
             ? `${action.target} now gets ${action.count} cards per deal`
             : action.type === 'spectate'
             ? `${action.target} is now ${action.mode}`
+            : action.type === 'setting'
+            ? `${action.by} ${action.state} ${action.setting}`
             : `${action.by} dealt the cards`}
         </div>
       )}
@@ -260,6 +274,15 @@ export default function GameRoom({ roomId }) {
             </div>
             <span className="deck-label">{state.deckCount}</span>
           </div>
+
+          {state.communityJokerCard && (
+            <div className="community-joker-area">
+              <span className="community-joker-label">Community Joker</span>
+              <div className="community-joker-card">
+                <Card card={state.communityJokerCard} index={0} />
+              </div>
+            </div>
+          )}
 
           <div className="table-actions">
             <button
@@ -413,7 +436,7 @@ export default function GameRoom({ roomId }) {
                     {new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                   <span className={`history-icon history-icon-${entry.type}`}>
-                    {entry.type === 'join' ? '→' : entry.type === 'shuffle' ? '↻' : entry.type === 'deal' ? '⇥' : entry.type === 'cap' ? '👁' : entry.type === 'kick' ? '✕' : entry.type === 'add-card' ? '+' : entry.type === 'spectate' ? '👁' : '•'}
+                    {entry.type === 'join' ? '→' : entry.type === 'shuffle' ? '↻' : entry.type === 'deal' ? '⇥' : entry.type === 'cap' ? '👁' : entry.type === 'kick' ? '✕' : entry.type === 'add-card' ? '+' : entry.type === 'spectate' ? '👁' : entry.type === 'setting' ? '⚙' : entry.type === 'community-joker' ? '🃏' : '•'}
                   </span>
                   <div className="history-text">
                     {entry.type === 'join' && <><strong>{entry.by}</strong> joined the room</>}
@@ -447,6 +470,8 @@ export default function GameRoom({ roomId }) {
                     {entry.type === 'add-card' && <><strong>{entry.target}</strong> now gets <strong>{entry.count}</strong> cards per deal</>}
                     {entry.type === 'kick' && <><strong>{entry.by}</strong> kicked <strong>{entry.target}</strong></>}
                     {entry.type === 'spectate' && <><strong>{entry.target}</strong> is now <strong>{entry.mode}</strong></>}
+                    {entry.type === 'setting' && <><strong>{entry.by}</strong> {entry.state} <strong>{entry.setting}</strong></>}
+                    {entry.type === 'community-joker' && <><strong>{entry.by}</strong> drew the Community Joker — placed in the middle</>}
                   </div>
                 </div>
               ))}

@@ -13,6 +13,12 @@ export function createDeck() {
   return deck;
 }
 
+export function createDeckWithCommunityJoker() {
+  const deck = createDeck();
+  deck.push({ suit: 'joker', value: 'Com', id: 'joker_community', community: true });
+  return deck;
+}
+
 export function shuffle(deck) {
   const shuffled = [...deck];
   for (let i = shuffled.length - 1; i > 0; i--) {

@@ -14,6 +14,8 @@ export async function GET() {
     kicked: [],
     dealt: false,
     revealed: false,
+    communityJokerEnabled: false,
+    communityJokerCard: null,
     lastAction: null,
     history: [],
   };

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createDeck, shuffle, deal } from '@/lib/deck';
+import { createDeck, createDeckWithCommunityJoker, shuffle, deal } from '@/lib/deck';
 import { getRoom, setRoom } from '@/lib/store';
 
 export async function GET(request, { params }) {
@@ -47,6 +47,8 @@ export async function GET(request, { params }) {
     isSpectating: meSpectating,
     deckCount: room.deck.length,
     playerCount: Object.keys(room.players).length,
+    communityJokerEnabled: room.communityJokerEnabled || false,
+    communityJokerCard: room.communityJokerCard || null,
     lastAction: room.lastAction,
     history: room.history || [],
   });
@@ -113,10 +115,11 @@ export async function POST(request, { params }) {
       if (playerId !== room.hostId) {
         return NextResponse.json({ error: 'Only the host can shuffle' }, { status: 403 });
       }
-      room.deck = shuffle(createDeck());
+      room.deck = shuffle(room.communityJokerEnabled ? createDeckWithCommunityJoker() : createDeck());
       room.hands = {};
       room.dealt = false;
       room.revealed = false;
+      room.communityJokerCard = null;
       room.lastAction = { type: 'shuffle', by: byName(), at: now };
       room.history.push({ type: 'shuffle', by: byName(), at: now });
       break;
@@ -130,10 +133,11 @@ export async function POST(request, { params }) {
       if (activeIds.length === 0) break;
       const perPlayer = activeIds.map((pid) => room.players[pid].dealCount || 5);
       const totalNeeded = perPlayer.reduce((a, b) => a + b, 0);
-      if (totalNeeded > 54) {
-        return NextResponse.json({ error: `Need ${totalNeeded} cards but deck only has 54` }, { status: 400 });
+      const deckSize = room.communityJokerEnabled ? 55 : 54;
+      if (totalNeeded > deckSize) {
+        return NextResponse.json({ error: `Need ${totalNeeded} cards but deck only has ${deckSize}` }, { status: 400 });
       }
-      room.deck = shuffle(createDeck());
+      room.deck = shuffle(room.communityJokerEnabled ? createDeckWithCommunityJoker() : createDeck());
       const result = deal(room.deck, activeIds.length, perPlayer);
       if (!result) {
         return NextResponse.json({ error: 'Not enough cards' }, { status: 400 });
@@ -143,6 +147,25 @@ export async function POST(request, { params }) {
         room.hands[pid] = result.hands[idx];
       });
       room.deck = result.remaining;
+      room.communityJokerCard = null;
+
+      if (room.communityJokerEnabled) {
+        for (const pid of activeIds) {
+          const hand = room.hands[pid];
+          const cjIdx = hand.findIndex((c) => c.community);
+          if (cjIdx !== -1) {
+            const [cjCard] = hand.splice(cjIdx, 1);
+            room.communityJokerCard = cjCard;
+            if (room.deck.length > 0) {
+              hand.push(room.deck.shift());
+            }
+            const gotName = room.players[pid].name;
+            room.history.push({ type: 'community-joker', by: gotName, at: now });
+            break;
+          }
+        }
+      }
+
       room.dealt = true;
       room.revealed = false;
       room.lastAction = { type: 'deal', by: byName(), at: now };
@@ -160,13 +183,27 @@ export async function POST(request, { params }) {
       const otherTotal = Object.entries(room.players)
         .filter(([pid]) => pid !== targetId)
         .reduce((sum, [, p]) => sum + (p.dealCount || 5), 0);
-      if (current + 1 + otherTotal > 54) {
+      const maxCards = room.communityJokerEnabled ? 55 : 54;
+      if (current + 1 + otherTotal > maxCards) {
         return NextResponse.json({ error: 'Not enough cards in the deck' }, { status: 400 });
       }
       room.players[targetId].dealCount = current + 1;
       const targetName = room.players[targetId].name;
       room.lastAction = { type: 'add-card', by: byName(), target: targetName, count: current + 1, at: now };
       room.history.push({ type: 'add-card', by: byName(), target: targetName, count: current + 1, at: now });
+      break;
+    }
+    case 'toggle-community-joker': {
+      if (playerId !== room.hostId) {
+        return NextResponse.json({ error: 'Only the host can change settings' }, { status: 403 });
+      }
+      room.communityJokerEnabled = !room.communityJokerEnabled;
+      if (!room.communityJokerEnabled) {
+        room.communityJokerCard = null;
+      }
+      const cjState = room.communityJokerEnabled ? 'enabled' : 'disabled';
+      room.lastAction = { type: 'setting', by: byName(), setting: 'Community Joker', state: cjState, at: now };
+      room.history.push({ type: 'setting', by: byName(), setting: 'Community Joker', state: cjState, at: now });
       break;
     }
     case 'toggle-spectate': {
